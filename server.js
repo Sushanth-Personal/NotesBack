@@ -20,7 +20,9 @@ app.use(morgan("dev"));
 app.use('/api',authenticateToken);
 app.use('/api',notesRoutes);
 app.use('/auth',authRoutes);
-
+app.get('/health',(req,res)=>{
+    res.status(200).json({message:"Healthy"})
+})
 
 
 const PORT = process.env.PORT || 5000;
