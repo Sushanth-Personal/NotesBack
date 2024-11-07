@@ -4,7 +4,8 @@ const dotenv = require("dotenv");
 dotenv.config();
 
 const jwtExpiresIn = "15m";
-const jwtRefreshExpiresIn = "20m";
+const jwtRefreshExpiresIn = "3h";
+
 const generateAccessToken = (id) => {
   return jwt.sign({ id }, process.env.ACCESS_TOKEN_SECRET, {
     expiresIn: jwtExpiresIn,
