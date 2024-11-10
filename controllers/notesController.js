@@ -44,43 +44,48 @@ const getGroups = async (req, res) => {
 
 const getNotes = async (req, res) => {
   try {
-    const { userId, groupId } = req.params;
+    const { userId } = req.params;
 
-    const intGroupId = parseInt(groupId, 10);
+    // Validate userId format
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-      return res
-        .status(400)
-        .json({ message: "invalid user ID format" });
+      return res.status(400).json({ message: "Invalid user ID format" });
     }
 
-    const groupObject = await User.aggregate([
+    // Fetch notes and groupId for the user
+    const notes = await User.aggregate([
       {
         $match: {
-          _id: new mongoose.Types.ObjectId(userId), // Ensure userId is defined correctly
-        },
+          _id: new mongoose.Types.ObjectId(userId)  // Match the specific user
+        }
       },
       {
         $project: {
-          groups: {
-            $filter: {
-              input: { $ifNull: ["$groups", []] },
+          notes: {
+            $map: {
+              input: { $ifNull: ["$groups", []] },  // Loop through each item in `groups`
               as: "group",
-              cond: { $eq: ["$$group.groupId", intGroupId] },
-            },
-          },
-        },
-      },
+              in: {
+                groupId: "$$group.groupId",
+                notes: "$$group.notes"
+              }
+            }
+          }
+        }
+      }
     ]);
 
-    if (!groupObject.length) {
-      res.status(404).json({ message: "User not found" });
+    if (!notes.length) {
+      return res.status(404).json({ message: "User not found" });
     } else {
-      res.status(200).json(groupObject[0].groups[0].notes);
+      // Return the notes array from the aggregation result
+      return res.status(200).json(notes[0].notes);  // Access notes from the first item of the result
     }
   } catch (error) {
-    res.status(500).json({ message: "Error getting groups", error });
+    console.error(error);
+    return res.status(500).json({ message: "Error getting notes", error });
   }
 };
+
 
 const createNotes = async (req, res) => {
   try {
