@@ -44,38 +44,40 @@ const getGroups = async (req, res) => {
 
 const getNotes = async (req, res) => {
   try {
-    const { userId, groupId } = req.params;
-
-    const intGroupId = parseInt(groupId, 10);
+    const { userId} = req.params;
+console.log(userId);
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res
         .status(400)
         .json({ message: "invalid user ID format" });
     }
+console.log(userId);
 
-    const groupObject = await User.aggregate([
-      {
-        $match: {
-          _id: new mongoose.Types.ObjectId(userId), // Ensure userId is defined correctly
-        },
-      },
-      {
-        $project: {
-          groups: {
-            $filter: {
-              input: { $ifNull: ["$groups", []] },
-              as: "group",
-              cond: { $eq: ["$$group.groupId", intGroupId] },
-            },
-          },
-        },
-      },
-    ]);
+const notes = await User.aggregate([
+  {
+    $match: {
+      _id: new mongoose.Types.ObjectId(userId)  // Match the specific user
+    }
+  },
+  {
+    $project: {
+      notes: {
+        $map: {
+          input: { $ifNull: ["$groups", []] },  // Loop through each item in `groups`
+          as: "group",
+          in: "$$group.notes"  // Directly return the `notes` array from each `group`
+        }
+      }
+    }
+  }
+]);
 
-    if (!groupObject.length) {
-      res.status(404).json({ message: "User not found" });
+
+    if (!notes.length) {
+      return res.status(404).json({ message: "User not found" });
     } else {
-      res.status(200).json(groupObject[0].groups[0].notes);
+      // Return the notes array from the aggregation result
+      return res.status(200).json(notes[0].notes);  // Access notes from the first item of the result
     }
   } catch (error) {
     res.status(500).json({ message: "Error getting groups", error });
@@ -125,37 +127,48 @@ const createNotes = async (req, res) => {
 
 const updateNotes = async (req, res) => {
   try {
-    const { notes } = req.body;
+    const { notes } = req.body; // Assuming `notes` is the new note to add
     const { userId, groupId } = req.params;
 
-    // Find the user by userId
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    // Find the specific group within the user's groups array
-    const selectedGroup = user.groups.find(
-      (group) => group.groupId.toString() === groupId
+    // Run the update operation and return the updated document
+    const result = await User.findOneAndUpdate(
+      { 
+        _id: new mongoose.Types.ObjectId(userId),  // Match the user by userId
+        "groups.groupId": parseInt(groupId)        // Match the specific groupId inside the groups array
+      },
+      { 
+        $push: { "groups.$[group].notes": notes }    // Push the new note into the notes array of the matched group
+      },
+      {
+        arrayFilters: [{ "group.groupId": parseInt(groupId) }],  // Apply filter to the correct group
+        new: true  // Return the updated document
+      }
     );
 
-    if (!selectedGroup) {
-      return res.status(404).json({ message: "Group not found" });
+    // Check if the group was found and updated
+    if (!result) {
+      return res.status(404).json({ message: "Group not found or no change made" });
     }
-    // Add the new note to the group's notes array
-    selectedGroup.notes = notes;
-    // Save the updated user document
-    await user.save();
 
-    res.status(200).json({
-      message: "Note updated successfully",
-      note: selectedGroup,
-    });
+    // Create an object to hold notes grouped by groupId
+    const groupedNotes = result.groups.reduce((acc, group) => {
+      acc[group.groupId-1] = group.notes;  // Group notes by groupId
+      return acc;
+    }, {});
+
+    // Return the grouped notes
+    res.status(200).json({ data: groupedNotes, message: "Note added successfully" });
+
   } catch (error) {
     console.error("Error updating notes", error);
     res.status(500).json({ message: "Error updating note", error });
   }
 };
+
+
+
+
+
 
 const deleteNotes = async (req, res) => {
   try {

@@ -63,7 +63,6 @@ const loginUser = async (req, res) => {
 
   try {
     const user = await User.login(identifier, password);
-console.log("Reached here")
     if (user) {
       const accessToken = generateAccessToken(user._id);
       const refreshToken = generateRefreshToken(user._id);
