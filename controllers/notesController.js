@@ -44,14 +44,14 @@ const getGroups = async (req, res) => {
 
 const getNotes = async (req, res) => {
   try {
-    const { userId, groupId } = req.params;
+    console.log("getting notes", req.params);
+    const { userId } = req.params;
 
-    const intGroupId = parseInt(groupId, 10);
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return res.status(400).json({ message: "Invalid user ID format" });
     }
 
-    const groupObject = await User.aggregate([
+    const groups = await User.aggregate([
       {
         $match: {
           _id: new mongoose.Types.ObjectId(userId), // Ensure userId is defined correctly
@@ -59,22 +59,16 @@ const getNotes = async (req, res) => {
       },
       {
         $project: {
-          groups: {
-            $filter: {
-              input: { $ifNull: ["$groups", []] },
-              as: "group",
-              cond: { $eq: ["$$group.groupId", intGroupId] },
-            },
+          groups:"$groups.notes"
           },
         },
-      },
+      
     ]);
-
-    if (!groupObject.length) {
+    if (!groups.length) {
       res.status(404).json({ message: "User not found" });
     } else {
       // Return the notes array from the aggregation result
-      return res.status(200).json(notes[0].notes);  // Access notes from the first item of the result
+      return res.status(200).json(groups[0].groups);  // Access notes from the first item of the result
     }
   } catch (error) {
     console.error(error);
