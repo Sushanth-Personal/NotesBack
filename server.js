@@ -15,7 +15,10 @@ dotenv.config();
 ConnectDB();
 
 // Middlewares
-app.use(cors());
+const corsOptions = {
+  origin: ['http://localhost:4173','https://notesfront-6stp.onrender.com'],  // Frontend URL
+
+};
 app.use(bodyParser.json());
 app.use(morgan("dev"));
 app.use('/api', authenticateToken);
