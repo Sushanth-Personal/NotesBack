@@ -16,9 +16,9 @@ ConnectDB();
 
 // Middlewares
 const corsOptions = {
-  origin: ['http://localhost:4173','https://notesfront-6stp.onrender.com'],  // Frontend URL
-
+  origin: ['https://notesfront-6stp.onrender.com'],  // Frontend URL
 };
+app.use(corsOptions);
 app.use(bodyParser.json());
 app.use(morgan("dev"));
 app.use('/api', authenticateToken);
